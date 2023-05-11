@@ -1,242 +1,70 @@
-window.onload = function() {
-  initialization();
-};
-
-function initialization() {
-  loadMap().then((newYmaps) => {
-    ymaps = newYmaps;
-
-    ymaps.ready(async function() {
-      await initMap(ymaps);
-    });
-  });
-}
-
-function getObjectIcon(objectId, isClicked) {
-  const geoObject = objectManager.objects.getById(objectId);
-
-  const pointOptions = geoObject.options;
-  const presetName = pointOptions.preset.replace('letu#', '').replace('Selected', '');
-  const mapPin = mapPins[presetName];
-  let isInitialSelected = objectId == initialSelectedId;
-  const imgName = isInitialSelected ? mapPin.selected : mapPin.normal;
-
-  const iconImageSize = isClicked ? iconImageCoords.size.big : iconImageCoords.size.small;
-  const iconImageOffset = isClicked ? iconImageCoords.offset.big : iconImageCoords.offset.small;
-
-  return {
-    iconLayout: 'default#image',
-    iconImageHref: imgName,
-    iconImageSize,
-    iconImageOffset,
-  };
-}
-
 /**
- * Send a message using the specified key for iOS
- *
- * @param {String} message
- * @param {String} condition
+ * Public interface
  */
-function postMessage(message = '', condition = '') {
-  try {
-    webkit.messageHandlers[condition].postMessage(message);
-  } catch (err) {
-    console.log(err);
-  }
-}
-
-/**
- * Prepare placemark params to display custom icons on map
- *
- * @param {string} name
- * @param {boolean} isSelected
- * @return {{iconImageHref: string, iconLayout: string}}
- */
-function getPresetInfo(name, isSelected) {
-  const mapPin = mapPins[name];
-  const imgName = isSelected ? mapPin.selected : mapPin.normal;
-
-  const iconImageSize = iconImageCoords.size.small;
-  const iconImageOffset = iconImageCoords.offset.small;
-
-  return {
-    iconLayout: 'default#image',
-    iconImageHref: imgName,
-    iconImageSize,
-    iconImageOffset,
-  };
-}
-
-/**
- * Set map instance and init objectManager
- *
- * @param {object} ymaps
- */
-async function initMap(ymaps) {
-  const center = [lat, lon];
-
-  ymaps.ready(() => {
-    Object.keys(mapPins).forEach((name) => {
-      // Add preset for normal icon
-      ymaps.option.presetStorage.add(`letu#${name}`, getPresetInfo(name, false));
-      // Add preset for selected icon
-      ymaps.option.presetStorage.add(`letu#${name}Selected`, getPresetInfo(name, true));
-    });
-  });
-
-  mapInstance = new ymaps.Map(
-    'point-search-map', {
-      center: center,
-      zoom: zoom,
-      controls: [],
-    }, {
-      restrictMapArea: [
-        [-48.054834277205416, -133.6464983758221],
-        [84.94772717006953, -133.64649837589238],
-      ],
-      minZoom: minZoom,
-      maxZoom: maxZoom,
-      suppressMapOpenBlock: true,
-    },
-  );
-
-  await initObjectManager();
-}
-
-function moveCenterToPoint(objectId, isAnimated) {
+function moveTo(objectId, isAnimated = hasAnimationOnMove) {
   const pointObject = getObjectById(objectId);
 
-  if (pointObject) {
+  if (pointObject && Object.keys(pointObject).length) {
+    const useMapMargin = selectedId != null;
+    const pointInfo = pointObject.pointInfo;
     // Set margin-bottom for mobile overlay
     mapInstance.margin.setDefaultMargin([0, 0, marginBottomMobileOverlay, 0]);
     // Move the map to point
     mapInstance
-      .panTo(pointObject.geometry.coordinates, {
-        useMapMargin: true, // Maybe using function param?
-        duration: isAnimated ? 500 : 0,
+      .panTo(pointObject.geometry?.coordinates, {
+        useMapMargin: useMapMargin,
+        duration: isAnimated ? animationDuration : 0,
       })
       .then(() => {
         // Clear margin-bottom after moved
         mapInstance.margin.setDefaultMargin(0);
       });
+
+      sendAction(pointObject.geometry?.coordinates, actions.moveTo);
+      sendAction(pointInfo, actions.selectPoint);
   }
 }
 
-function sendAction(actionValue, actionName) {
-  let Letu = {}
+// function move(lat, lon, isAnimated) {
+//   const useMapMargin = selectedId != null;
 
+//   // Set margin-bottom for mobile overlay
+//   mapInstance.margin.setDefaultMargin([0, 0, marginBottomMobileOverlay, 0]);
+//   // Move the map to point
+//   mapInstance
+//     .panTo([lat, lon], {
+//       useMapMargin: useMapMargin, // Maybe using function param?
+//       duration: isAnimated ? 500 : 0,
+//     })
+//     .then(() => {
+//       // Clear margin-bottom after moved
+//       mapInstance.margin.setDefaultMargin(0);
+//     });
+
+//   const iconData = getObjectIcon(selectedId, true);
+//   objectManager.objects.setObjectOptions(selectedId, iconData);
+
+//   sendAction({
+//     lat,
+//     lon,
+//     isAnimated
+//   }, actions.move)
+// }
+
+function sendAction(actionValue, actionName) {
   if (iOSDevice) {
     // iOS
     postMessage(actionValue, actionName);
   } else {
     // Android
-    console.log(actionValue, actionName)
+    Letu[actionName]?.call(this, actionValue);
   }
-}
-
-function bindEvents() {
-  mapInstance.events.add('click', async (e) => {
-    clearSelectedMarker();
-
-    sendAction('', actions.didTapOnMap)
-  });
-
-  mapInstance.events.add('boundschange', async (e) => {
-    objectManager.objects.each(function(geoObject) {
-      const isClicked = selectedId == geoObject.id || geoObject.id == preselectedPointId;
-      const iconData = getObjectIcon(geoObject.id, isClicked);
-      objectManager.objects.setObjectOptions(geoObject.id, iconData);
-    });
-  });
-
-  objectManager.objects.events.add('click', async (e) => {
-    clearSelectedMarker();
-
-    const clickedPointId = e.get('objectId');
-    if (clickedPointId == preselectedPointId) {
-      return;
-    }
-
-    const iconData = getObjectIcon(clickedPointId, true);
-    objectManager.objects.setObjectOptions(clickedPointId, iconData);
-
-    selectedId = clickedPointId;
-    const pointObject = getObjectById(clickedPointId);
-    const pointCoords = pointObject?.geometry?.coordinates;
-
-    moveCenterToPoint(clickedPointId, hasAnimationOnMove);
-
-    sendAction(pointObject, actions.didTapOnPoint);
-  });
-
-  // Processing a click on clusters
-  objectManager.events.add('click', (e) => {
-    const objectId = e.get('objectId');
-
-    if (hasBalloonData(objectId)) {
-      const cluster = objectManager.clusters.getById(objectId);
-      const geoObjects = cluster.properties.geoObjects;
-      const array = geoObjects.filter((geoObject) => {
-        return !geoObject.properties.balloonContent;
-      });
-
-      const objects = array.map((geoObject) => {
-        return getObjectById(geoObject.id);
-      });
-
-      sendAction(objects, actions.didTapOnCluster);
-    }
-  });
-}
-
-function hasBalloonData(objectId) {
-  const cluster = objectManager.clusters.getById(objectId);
-  if (cluster == null) {
-    return false;
-  }
-
-  return true;
-}
-
-function clearSelectedMarker() {
-  if (selectedId && objectManager) {
-    const iconData = getObjectIcon(selectedId, false);
-    objectManager.objects.setObjectOptions(selectedId, iconData);
-    selectedId = null;
-  }
-}
-
-function move(lat, lon, isAnimated) {
-  const useMapMargin = selectedId != null;
-
-  // Set margin-bottom for mobile overlay
-  mapInstance.margin.setDefaultMargin([0, 0, marginBottomMobileOverlay, 0]);
-  // Move the map to point
-  mapInstance
-    .panTo([lat, lon], {
-      useMapMargin: useMapMargin, // Maybe using function param?
-      duration: isAnimated ? 500 : 0,
-    })
-    .then(() => {
-      // Clear margin-bottom after moved
-      mapInstance.margin.setDefaultMargin(0);
-    });
-
-  const iconData = getObjectIcon(selectedId, true);
-  objectManager.objects.setObjectOptions(selectedId, iconData);
-
-  sendAction({
-    lat,
-    lon,
-    isAnimated
-  }, actions.move)
 }
 
 function setZoom(zoom) {
   mapInstance.setZoom(zoom, {
     smooth: true,
-    duration: zoomDurationMs,
+    duration: animationDuration,
   });
 
   sendAction(zoom, actions.setZoom);
@@ -245,7 +73,7 @@ function setZoom(zoom) {
 function setZoomDefault() {
   mapInstance.setZoom(zoom, {
     smooth: true,
-    duration: zoomDurationMs,
+    duration: animationDuration,
   });
 
   sendAction(zoom, actions.setZoomDefault);
@@ -256,7 +84,7 @@ function zoomOut() {
     let nextZoom = mapInstance.getZoom() - 1;
     mapInstance.setZoom(nextZoom, {
       smooth: true,
-      duration: zoomDurationMs,
+      duration: animationDuration,
     });
 
     sendAction(nextZoom, actions.zoomOut);
@@ -268,7 +96,7 @@ function zoomIn() {
     let nextZoom = mapInstance.getZoom() + 1;
     mapInstance.setZoom(nextZoom, {
       smooth: true,
-      duration: zoomDurationMs,
+      duration: animationDuration,
     });
 
     sendAction(nextZoom, actions.zoomIn);
@@ -310,7 +138,9 @@ function selectPoint(lat, lon, id, isAnimated) {
   move(lat, lon, isAnimated);
   selectedId = id;
 
-  sendAction(getObjectById(id), actions.selectPoint)
+  const pointInfo = getObjectById(id)?.pointInfo
+
+  sendAction(pointInfo, actions.selectPoint)
 }
 
 function unselectPoints(isAnimated) {
@@ -320,10 +150,244 @@ function unselectPoints(isAnimated) {
   sendAction('', actions.unselectPoints)
 }
 
+/**
+ * Apply filters
+ * @param {Array} selectedFiltersList list of strings to apply the filters. Example: ['ALL', 'NOTHING', 'SOME']
+ * @param {Boolean} shouldRerenderMapFiltersComponent a flag to rerender filters on map component
+ */
+function applyFilters(
+  selectedFiltersList = [],
+) {
+  if (!this.objectManager) {
+    return;
+  }
+
+  if (!selectedFiltersList.length) {
+    this.objectManager.setFilter();
+    return;
+  }
+
+  this.objectManager.setFilter((point) => {
+    const valueToFilter = this.getValueToFilter(point);
+
+    if (!valueToFilter) {
+      return '';
+    }
+
+    return selectedFiltersList.includes(valueToFilter);
+  });
+}
+/**
+ * Public interface end
+ */
+
+
+
+/**
+ * Private interface
+ */
+window.onload = function() {
+  initialization();
+};
+
+function initialization() {
+  loadMap().then((newYmaps) => {
+    ymaps = newYmaps;
+
+    ymaps.ready(async function() {
+      await initMap(ymaps);
+    });
+  });
+}
+
+function getObjectIcon(objectId, isClicked) {
+  const geoObject = objectManager.objects.getById(objectId);
+
+  const pointOptions = geoObject.options;
+  const type = geoObject.pointInfo.type === 'store' ? 'store' : 'pointOfIssue';
+  const presetName = pointOptions.preset.replace('letu#', '').replace('Selected', '');
+
+  return getPlacemarkPresetInfo({
+    name: presetName,
+    ymaps,
+    type,
+    isSelected: isClicked,
+  })
+}
+
+/**
+ * Send a message using the specified key for iOS
+ *
+ * @param {String} message
+ * @param {String} condition
+ */
+function postMessage(message = '', condition = '') {
+  try {
+    webkit.messageHandlers[condition].postMessage(message);
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+/**
+ * Set map instance and init objectManager
+ *
+ * @param {object} ymaps
+ */
+async function initMap(ymaps) {
+  const center = [lat, lon];
+
+  ymaps.ready(() => {
+    const options = {
+      ymaps,
+    };
+
+    const presets = [
+      ...placemarks.storePresets,
+      ...placemarks.pointOfIssuePresets,
+    ];
+
+    presets.forEach((name) => {
+      options.name = name;
+      options.type = type;
+
+      ymaps.option.presetStorage.add(
+        `letu#${name}`,
+        getPlacemarkPresetInfo({
+          ...options,
+          isSelected: false,
+        }),
+      );
+
+      ymaps.option.presetStorage.add(
+        `letu#${name}Selected`,
+        getPlacemarkPresetInfo({
+          ...options,
+          isSelected: true,
+        }),
+      );
+
+      ymaps.option.presetStorage.add(
+        `letu#${name}SelectedInactive`,
+        getPlacemarkPresetInfo({
+          ...options,
+          isSelected: false,
+        }),
+      );
+
+      ymaps.option.presetStorage.add(
+        `letu#${name}Active`,
+        getPlacemarkPresetInfo({
+          ...options,
+          isSelected: true,
+        }),
+      );
+    });
+
+    if (preselectedPointId) {
+      showOnlyPreselectedPoint();
+    } else if (selectedId) {
+      // todo
+    }
+  });
+
+  mapInstance = new ymaps.Map(
+    'point-search-map', {
+      center: center,
+      zoom: zoom,
+      controls: [],
+    }, {
+      restrictMapArea: [
+        [-48.054834277205416, -133.6464983758221],
+        [84.94772717006953, -133.64649837589238],
+      ],
+      minZoom: minZoom,
+      maxZoom: maxZoom,
+      suppressMapOpenBlock: true,
+    },
+  );
+
+  await initObjectManager();
+}
+
+function bindEvents() {
+  mapInstance.events.add('click', async (e) => {
+    clearSelectedMarker();
+
+    sendAction('', actions.didTapOnMap)
+  });
+
+  mapInstance.events.add('boundschange', async (e) => {
+    objectManager.objects.each(function(geoObject) {
+      const isClicked = selectedId == geoObject.id || geoObject.id == preselectedPointId;
+      const iconData = getObjectIcon(geoObject.id, isClicked);
+      objectManager.objects.setObjectOptions(geoObject.id, iconData);
+    });
+  });
+
+  objectManager.objects.events.add('click', async (e) => {
+    clearSelectedMarker();
+
+    const clickedPointId = e.get('objectId');
+
+    if (clickedPointId == preselectedPointId) {
+      return;
+    }
+
+    const iconData = getObjectIcon(clickedPointId, true);
+    objectManager.objects.setObjectOptions(clickedPointId, iconData);
+
+    selectedId = clickedPointId;
+    const pointObject = getObjectById(clickedPointId);
+
+    moveTo(clickedPointId);
+
+    sendAction(pointObject, actions.didTapOnPoint);
+  });
+
+  // Processing a click on clusters
+  objectManager.events.add('click', (e) => {
+    const objectId = e.get('objectId');
+
+    if (hasBalloonData(objectId)) {
+      const cluster = objectManager.clusters.getById(objectId);
+      const geoObjects = cluster.properties.geoObjects;
+      const array = geoObjects.filter((geoObject) => {
+        return !geoObject.properties.balloonContent;
+      });
+
+      const objects = array.map((geoObject) => {
+        return getObjectById(geoObject.id).pointInfo;
+      });
+
+      sendAction(objects, actions.didTapOnCluster);
+    }
+  });
+}
+
+function hasBalloonData(objectId) {
+  const cluster = objectManager.clusters.getById(objectId);
+  if (cluster == null) {
+    return false;
+  }
+
+  return true;
+}
+
+function clearSelectedMarker() {
+  if (selectedId && objectManager) {
+    const iconData = getObjectIcon(selectedId, false);
+    objectManager.objects.setObjectOptions(selectedId, iconData);
+    selectedId = null;
+  }
+}
+
 function showOnlyPreselectedPoint() {
   objectManager.setFilter((point) => {
     return point.id === preselectedPointId;
   });
+
+  moveTo(preselectedPointId);
 }
 
 function getObjectById(objectId) {
@@ -349,53 +413,19 @@ async function initObjectManager() {
     clusterHasBalloon: false,
     clusterize: true,
     paddingTemplate: `${type}_%t`,
+    clusterIconLayout: ymaps.templateLayoutFactory.createClass(
+      getPlacemarkTemplate('cluster'),
+    ),
+    clusterIconShape: placemarks.iconShapes.cluster,
   }
 
   const path = `${pointsApiUrl}?b=%b&z=%z&${prepareQueryParams(queryParams)}`;
 
   objectManager = new ymaps.LoadingObjectManager(path, options);
-  mapInstance.geoObjects.add(objectManager);
+  await mapInstance.geoObjects.add(objectManager);
   userLocationCollection = new ymaps.GeoObjectCollection();
 
-  if (preselectedPointId) {
-    showOnlyPreselectedPoint();
-  }
-
   bindEvents();
-}
-
-/**
- * Get, validate and apply filter params on map
- *
- * @param {string} filtersValue example: 'storeWithStocksFromHub,storeWithStocksInStore'
- */
-async function applyFilters(filtersValue) {
-  if (!objectManager) {
-    return;
-  }
-
-  const selectedFilters = filtersValue
-
-  if (Object.keys(objectManager).length !== 0) {
-    const filtersValidate = (items) => {
-      if (items?.length) {
-        return items.filter((item) => storeFilters.includes(item));
-      }
-      return [];
-    };
-    const filtersList = filtersValidate(selectedFilters?.split(','));
-    if (selectedFilters && filtersList?.length) {
-      objectManager.setFilter((point) => {
-        return filtersList.indexOf(point.options?.preset.replace('letu#', '')) > -1;
-      });
-
-      sendAction(filtersValue, actions.applyFilters)
-    } else {
-      objectManager.setFilter();
-
-      sendAction('', actions.applyFilters)
-    }
-  }
 }
 
 function prepareQueryParams(params) {
@@ -442,3 +472,113 @@ const loadScript = (src) => {
 
   document.querySelector('head').appendChild(script);
 }
+
+function getValueToFilter(item) {
+  if (!item) {
+    return '';
+  }
+
+  const isStoreType =
+    // First condition if item is a point, second if item is a location
+    item.pointInfo?.type === PICKUP_POINTS_TYPES.store ||
+    item.type === PICKUP_POINTS_TYPES.store;
+
+  // First result if item is a point, second if item is a location
+  return isStoreType
+    ? item.pointInfo?.deliveryInfo?.availabilityType ||
+        item.deliveryInfo?.availabilityType
+    : item.pointInfo?.type || item.type;
+}
+
+/**
+ * Prepare placemark params to display custom icons on map
+ * @param {string} name name of default template
+ * @param {object} ymaps ymaps object
+ * @param {boolean} isSelected to define the modifier of placemark element in template
+ * @param {string} imagePath placemark inner image path
+ * @return {String} transformed template
+ */
+function getPlacemarkTemplate(type = '', isSelected = false, imagePath = '') {
+  let template = placemarks.templates[type];
+
+  if (!template) {
+    return '';
+  }
+
+  if (imagePath) {
+    template = template.replace('[imagePath]', imagePath);
+  }
+
+  template = template.replace(
+    '[isSelected]',
+    isSelected ? 'selected' : 'not-selected',
+  );
+
+  return template;
+}
+
+/**
+ * Prepare placemark params to display custom icons on map
+ * @param {string} name name of preset
+ * @param {object} ymaps ymaps object
+ * @param {string} type current delivery type
+ * @param {boolean} isSelected is point selected
+ * @return {Object} transformed preset info
+ */
+function getPlacemarkPresetInfo({ name, ymaps, type, isSelected = false }) {
+  const isStoreType = type === 'store';
+  let iconShape = isSelected
+    ? placemarks.iconShapes.pointSelected
+    : placemarks.iconShapes.store;
+  let iconLayout = ymaps?.templateLayoutFactory.createClass(
+    getPlacemarkTemplate('store', isSelected),
+  );
+
+  const iconOffset = [0, -70];
+
+  if (isStoreType) {
+    return {
+      iconLayout,
+      iconShape,
+      iconOffset,
+    };
+  } else {
+    if (!isSelected) {
+      iconShape = placemarks.iconShapes.pointOfIssue;
+    }
+
+    iconLayout = ymaps?.templateLayoutFactory.createClass(
+      getPlacemarkTemplate(
+        'pointOfIssue',
+        isSelected,
+        getPointOfIssueImagePath(name, true),
+      ),
+    );
+
+    return {
+      iconLayout,
+      iconShape,
+      iconOffset,
+    };
+  }
+}
+
+/**
+ * Get point of issue image path
+ * @param {string} type point of issue type
+ * @param {boolean} isForPoint is image path for point of issue
+ * @return {string} point of issue image path
+ */
+function getPointOfIssueImagePath(type, isForPoint = false) {
+  let imageName = type;
+
+  if (isForPoint) {
+    imageName = imageName.replace('point', '');
+    imageName = imageName.charAt(0).toLowerCase() + imageName.substring(1);
+  }
+
+  return `${imageName}.png`;
+}
+/**
+ * Private interface end
+ */
