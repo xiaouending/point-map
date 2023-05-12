@@ -55,8 +55,8 @@ let objectManager = null;
 let ymaps = null;
 let userLocationCollection = null;
 
-const minZoom = iOSDevice ? 3 : 10;
-const maxZoom = iOSDevice ? 21 : 19;
+const minZoom = 10;
+const maxZoom = 15;
 const isMaxMapZoom = () => mapInstance.getZoom() == maxZoom;
 const isMinMapZoom = () => mapInstance.getZoom() == minZoom;
 
@@ -77,7 +77,7 @@ const actions = {
   setZoom: 'setZoom',
   addUserPositionPin: 'addUserPositionPin',
   removeUserPositionPin: 'removeUserPositionPin',
-  moveTo: 'moveTo',
+  moveCenterToPoint: 'moveCenterToPoint',
   applyFilters: 'applyFilters',
   selectPoint: 'selectPoint',
   unselectPoints: 'unselectPoints',

@@ -1,7 +1,7 @@
 /**
  * Public interface
  */
-function moveTo(objectId, isAnimated = hasAnimationOnMove) {
+function moveCenterToPoint(objectId, isAnimated) {
   const pointObject = getObjectById(objectId);
 
   if (pointObject && Object.keys(pointObject).length) {
@@ -20,36 +20,35 @@ function moveTo(objectId, isAnimated = hasAnimationOnMove) {
         mapInstance.margin.setDefaultMargin(0);
       });
 
-      sendAction(pointObject.geometry?.coordinates, actions.moveTo);
-      sendAction(pointInfo, actions.selectPoint);
+      sendAction(pointInfo, actions.moveCenterToPoint);
   }
 }
 
-// function move(lat, lon, isAnimated) {
-//   const useMapMargin = selectedId != null;
+function move(lat, lon, isAnimated) {
+  const useMapMargin = selectedId != null;
 
-//   // Set margin-bottom for mobile overlay
-//   mapInstance.margin.setDefaultMargin([0, 0, marginBottomMobileOverlay, 0]);
-//   // Move the map to point
-//   mapInstance
-//     .panTo([lat, lon], {
-//       useMapMargin: useMapMargin, // Maybe using function param?
-//       duration: isAnimated ? 500 : 0,
-//     })
-//     .then(() => {
-//       // Clear margin-bottom after moved
-//       mapInstance.margin.setDefaultMargin(0);
-//     });
+  // Set margin-bottom for mobile overlay
+  mapInstance.margin.setDefaultMargin([0, 0, marginBottomMobileOverlay, 0]);
+  // Move the map to point
+  mapInstance
+    .panTo([lat, lon], {
+      useMapMargin: useMapMargin, // Maybe using function param?
+      duration: isAnimated ? 500 : 0,
+    })
+    .then(() => {
+      // Clear margin-bottom after moved
+      mapInstance.margin.setDefaultMargin(0);
+    });
 
-//   const iconData = getObjectIcon(selectedId, true);
-//   objectManager.objects.setObjectOptions(selectedId, iconData);
+  const iconData = getObjectIcon(selectedId, true);
+  objectManager.objects.setObjectOptions(selectedId, iconData);
 
-//   sendAction({
-//     lat,
-//     lon,
-//     isAnimated
-//   }, actions.move)
-// }
+  sendAction({
+    lat,
+    lon,
+    isAnimated
+  }, actions.move)
+}
 
 function sendAction(actionValue, actionName) {
   if (iOSDevice) {
@@ -103,7 +102,7 @@ function zoomIn() {
   }
 }
 
-function addUserPositionPin(lat, lon, withMove = true) {
+function addUserPositionPin(lat, lon) {
   userLocationCollection.removeAll(); // Clearing old data from the user location collection
 
   const coords = [lat, lon];
@@ -116,10 +115,6 @@ function addUserPositionPin(lat, lon, withMove = true) {
       iconImageOffset: [-16, -16],
     },
   );
-
-  if (withMove) {
-    mapInstance.panTo(coords); // Moving to user coordinates
-  }
 
   userLocationCollection.add(locationPlacemark); // Add user location point in collection
   mapInstance.geoObjects.add(userLocationCollection); // Add user location collection with point on map
@@ -134,29 +129,25 @@ function removeUserPositionPin() {
   sendAction('', actions.removeUserPositionPin);
 }
 
-function selectPoint(lat, lon, id, isAnimated = hasAnimationOnMove) {
+function selectPoint(objectId, isAnimated) {
   selectedId = null;
-  moveTo(lat, lon, isAnimated);
-  selectedId = id;
+  moveCenterToPoint(objectId, isAnimated);
+  selectedId = objectId;
 
   const pointInfo = getObjectById(id)?.pointInfo
 
   sendAction(pointInfo, actions.selectPoint)
 }
 
-function unselectPoints(isAnimated = hasAnimationOnMove) {
+function unselectPoints() {
   clearSelectedMarker();
-
   selectedId = null;
-  moveTo(globalSettings.map.userLat, globalSettings.map.userLon, isAnimated);
-
   sendAction('', actions.unselectPoints)
 }
 
 /**
  * Apply filters
  * @param {Array} selectedFiltersList list of strings to apply the filters. Example: ['ALL', 'NOTHING', 'SOME']
- * @param {Boolean} shouldRerenderMapFiltersComponent a flag to rerender filters on map component
  */
 function applyFilters(
   selectedFiltersList = [],
@@ -164,8 +155,6 @@ function applyFilters(
   if (!objectManager) {
     return;
   }
-
-  sendAction(selectedFiltersList, actions.applyFilters);
 
   if (!selectedFiltersList.length) {
     objectManager.setFilter();
@@ -328,8 +317,6 @@ function bindEvents() {
   });
 
   objectManager.objects.events.add('click', async (e) => {
-    clearSelectedMarker();
-
     const clickedPointId = e.get('objectId');
 
     const iconData = getObjectIcon(clickedPointId, true);
@@ -340,7 +327,7 @@ function bindEvents() {
 
     console.log(pointObject);
 
-    moveTo(clickedPointId);
+    moveCenterToPoint(clickedPointId, hasAnimationOnMove);
 
     sendAction(pointObject.pointInfo, actions.didTapOnPoint);
   });
@@ -419,7 +406,7 @@ function initObjectManager() {
 
   bindEvents();
 
-  addUserPositionPin(globalSettings.map.userLat, globalSettings.map.userLon, false)
+  addUserPositionPin(globalSettings.map.userLat, globalSettings.map.userLon, false);
 }
 
 function prepareQueryParams(params) {
