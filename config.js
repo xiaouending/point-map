@@ -5,19 +5,17 @@ const apiHost = urlParams.get('host') || urlParams.get('apiHost');
 const baseHost = apiHost || 'https://api.new.preprod.letu.ru';
 const pushSite = urlParams.get('pushSite') || 'apiMobileRU';
 const skuId = urlParams.get('skuId') || null;
-const preselectedPointId = urlParams.get('preselectedPointId');
 const defaultZoom = urlParams.get('zoom');
 const hasAnimationOnMove = urlParams.get('hasAnimationOnMove');
 const orderId = urlParams.get('orderId');
 const cityId = urlParams.get('cityId');
 const animationDurationMs = urlParams.get('animationDurationMs');
-
-const mapStartLan = urlParams.get('mapStartLan');
-const mapStartLon = urlParams.get('mapStartLon');
-const userLan = urlParams.get('userLan');
+const userLat = urlParams.get('userLat');
 const userLon = urlParams.get('userLon');
 
 let selectedId = urlParams.get('selectedId');
+let mapStartLat = urlParams.get('mapStartLat');
+let mapStartLon = urlParams.get('mapStartLon');
 
 let type = urlParams.get('type'); // Type of map - 'store' | 'pointOfIssue' | 'all'
 
@@ -30,8 +28,10 @@ const globalSettings = {
   scriptSrc: `https://api-maps.yandex.ru/2.1/?apiKey="949cd34d-e616-40f7-aa2b-b8024b7bb4b0"&lang=ru_RU&onload=yandexMapsAPILoad`,
   map: {
     apiUrl: '/s/api/geo/v2/map/locations',
-    lat: userLan || 55.75396,
-    lon: userLon || 37.620393,
+    userLat: userLat || 55.75396,
+    userLon: userLon || 37.620393,
+    mapStartLat: mapStartLat || 55.75396,
+    mapStartLon: mapStartLon || 37.620393,
     zoom: defaultZoom || 15,
     animationDurationMs: animationDurationMs || 300,
   },
@@ -47,8 +47,6 @@ const iOSDevice = (/iPad|iPhone|iPod/.test(navigator.userAgent))
 const pointsApiUrl = baseHost + globalSettings.map.apiUrl;
 
 const zoom = globalSettings.map.zoom;
-const lat = globalSettings.map.lat;
-const lon = globalSettings.map.lon;
 const animationDuration = globalSettings.map.animationDurationMs;
 const marginBottomMobileOverlay = iOSDevice ? 200 : 150;
 
@@ -61,6 +59,9 @@ const minZoom = iOSDevice ? 3 : 10;
 const maxZoom = iOSDevice ? 21 : 19;
 const isMaxMapZoom = () => mapInstance.getZoom() == maxZoom;
 const isMinMapZoom = () => mapInstance.getZoom() == minZoom;
+
+mapStartLat = globalSettings.map.mapStartLat;
+mapStartLon = globalSettings.map.mapStartLon;
 
 // Map pins
 const userPositionPin = 'pin-user-position.svg'

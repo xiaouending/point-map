@@ -103,9 +103,7 @@ function zoomIn() {
   }
 }
 
-function addUserPositionPin(lat, lon) {
-  clearSelectedMarker();
-
+function addUserPositionPin(lat, lon, withMove = true) {
   userLocationCollection.removeAll(); // Clearing old data from the user location collection
 
   const coords = [lat, lon];
@@ -119,7 +117,10 @@ function addUserPositionPin(lat, lon) {
     },
   );
 
-  mapInstance.panTo(coords); // Moving to user coordinates
+  if (withMove) {
+    mapInstance.panTo(coords); // Moving to user coordinates
+  }
+
   userLocationCollection.add(locationPlacemark); // Add user location point in collection
   mapInstance.geoObjects.add(userLocationCollection); // Add user location collection with point on map
 
@@ -133,9 +134,9 @@ function removeUserPositionPin() {
   sendAction('', actions.removeUserPositionPin);
 }
 
-function selectPoint(lat, lon, id, isAnimated) {
+function selectPoint(lat, lon, id, isAnimated = hasAnimationOnMove) {
   selectedId = null;
-  move(lat, lon, isAnimated);
+  moveTo(lat, lon, isAnimated);
   selectedId = id;
 
   const pointInfo = getObjectById(id)?.pointInfo
@@ -143,9 +144,11 @@ function selectPoint(lat, lon, id, isAnimated) {
   sendAction(pointInfo, actions.selectPoint)
 }
 
-function unselectPoints(isAnimated) {
+function unselectPoints(isAnimated = hasAnimationOnMove) {
+  clearSelectedMarker();
+
   selectedId = null;
-  move(lat, lon, isAnimated);
+  moveTo(globalSettings.map.userLat, globalSettings.map.userLon, isAnimated);
 
   sendAction('', actions.unselectPoints)
 }
@@ -158,16 +161,18 @@ function unselectPoints(isAnimated) {
 function applyFilters(
   selectedFiltersList = [],
 ) {
-  if (!this.objectManager) {
+  if (!objectManager) {
     return;
   }
+
+  sendAction(selectedFiltersList, actions.applyFilters);
 
   if (!selectedFiltersList.length) {
-    this.objectManager.setFilter();
+    objectManager.setFilter();
     return;
   }
 
-  this.objectManager.setFilter((point) => {
+  objectManager.setFilter((point) => {
     const valueToFilter = this.getValueToFilter(point);
 
     if (!valueToFilter) {
@@ -235,7 +240,7 @@ function postMessage(message = '', condition = '') {
  * @param {object} ymaps
  */
 async function initMap(ymaps) {
-  const center = [lat, lon];
+  const center = [mapStartLat, mapStartLon];
 
   ymaps.ready(() => {
     const options = {
@@ -283,12 +288,6 @@ async function initMap(ymaps) {
         }),
       );
     });
-
-    if (preselectedPointId) {
-      showOnlyPreselectedPoint();
-    } else if (selectedId) {
-      // todo
-    }
   });
 
   mapInstance = new ymaps.Map(
@@ -307,21 +306,24 @@ async function initMap(ymaps) {
     },
   );
 
-  await initObjectManager();
+  initObjectManager();
 }
 
 function bindEvents() {
   mapInstance.events.add('click', async (e) => {
-    clearSelectedMarker();
-
     sendAction('', actions.didTapOnMap)
   });
 
   mapInstance.events.add('boundschange', async (e) => {
     objectManager.objects.each(function(geoObject) {
-      const isClicked = selectedId == geoObject.id || geoObject.id == preselectedPointId;
+      const isClicked = selectedId == geoObject.id;
       const iconData = getObjectIcon(geoObject.id, isClicked);
       objectManager.objects.setObjectOptions(geoObject.id, iconData);
+
+      const objectState = objectManager.getObjectState(geoObject.id);
+      if (objectState?.isShown) {
+        //todo: change city if more 50% points from other city
+      }
     });
   });
 
@@ -330,19 +332,17 @@ function bindEvents() {
 
     const clickedPointId = e.get('objectId');
 
-    if (clickedPointId == preselectedPointId) {
-      return;
-    }
-
     const iconData = getObjectIcon(clickedPointId, true);
     objectManager.objects.setObjectOptions(clickedPointId, iconData);
 
     selectedId = clickedPointId;
     const pointObject = getObjectById(clickedPointId);
 
+    console.log(pointObject);
+
     moveTo(clickedPointId);
 
-    sendAction(pointObject, actions.didTapOnPoint);
+    sendAction(pointObject.pointInfo, actions.didTapOnPoint);
   });
 
   // Processing a click on clusters
@@ -382,14 +382,6 @@ function clearSelectedMarker() {
   }
 }
 
-function showOnlyPreselectedPoint() {
-  objectManager.setFilter((point) => {
-    return point.id === preselectedPointId;
-  });
-
-  moveTo(preselectedPointId);
-}
-
 function getObjectById(objectId) {
   return objectManager?.objects?.getById(objectId) || {};
 }
@@ -397,15 +389,15 @@ function getObjectById(objectId) {
 /**
  * Yandex Map object Manager initialization and adding event listeners on points
  */
-async function initObjectManager() {
+function initObjectManager() {
   const queryParams = {
     pushSite,
     skuId: skuId || null,
-    latitude: globalSettings.map.lat,
-    longitude: globalSettings.map.lon,
+    latitude: globalSettings.map.userLat,
+    longitude: globalSettings.map.userLon,
     type,
     selectedId,
-    orderId,
+    orderId: skuId ? null : orderId,
     cityId
   };
 
@@ -422,10 +414,12 @@ async function initObjectManager() {
   const path = `${pointsApiUrl}?b=%b&z=%z&${prepareQueryParams(queryParams)}`;
 
   objectManager = new ymaps.LoadingObjectManager(path, options);
-  await mapInstance.geoObjects.add(objectManager);
+  mapInstance.geoObjects.add(objectManager);
   userLocationCollection = new ymaps.GeoObjectCollection();
 
   bindEvents();
+
+  addUserPositionPin(globalSettings.map.userLat, globalSettings.map.userLon, false)
 }
 
 function prepareQueryParams(params) {
@@ -480,8 +474,8 @@ function getValueToFilter(item) {
 
   const isStoreType =
     // First condition if item is a point, second if item is a location
-    item.pointInfo?.type === PICKUP_POINTS_TYPES.store ||
-    item.type === PICKUP_POINTS_TYPES.store;
+    item.pointInfo?.type === 'store' ||
+    item.type === 'store';
 
   // First result if item is a point, second if item is a location
   return isStoreType
@@ -582,3 +576,4 @@ function getPointOfIssueImagePath(type, isForPoint = false) {
 /**
  * Private interface end
  */
+
