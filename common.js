@@ -285,10 +285,6 @@ async function initMap(ymaps) {
       zoom: zoom,
       controls: [],
     }, {
-      restrictMapArea: [
-        [-48.054834277205416, -133.6464983758221],
-        [84.94772717006953, -133.64649837589238],
-      ],
       minZoom: minZoom,
       maxZoom: maxZoom,
       suppressMapOpenBlock: true,
@@ -324,8 +320,6 @@ function bindEvents() {
 
     selectedId = clickedPointId;
     const pointObject = getObjectById(clickedPointId);
-
-    console.log(pointObject);
 
     moveCenterToPoint(clickedPointId, hasAnimationOnMove);
 
@@ -508,6 +502,8 @@ function getPlacemarkTemplate(type = '', isSelected = false, imagePath = '') {
  */
 function getPlacemarkPresetInfo({ name, ymaps, type, isSelected = false }) {
   const isStoreType = type === 'store';
+  const getIconOffset = (shapeCoords) => [-shapeCoords[0], -shapeCoords[1] * 2];
+
   let iconShape = isSelected
     ? placemarks.iconShapes.pointSelected
     : placemarks.iconShapes.store;
@@ -515,7 +511,7 @@ function getPlacemarkPresetInfo({ name, ymaps, type, isSelected = false }) {
     getPlacemarkTemplate('store', isSelected),
   );
 
-  const iconOffset = [0, -70];
+  let iconOffset = getIconOffset(iconShape.coordinates);
 
   if (isStoreType) {
     return {
@@ -526,6 +522,7 @@ function getPlacemarkPresetInfo({ name, ymaps, type, isSelected = false }) {
   } else {
     if (!isSelected) {
       iconShape = placemarks.iconShapes.pointOfIssue;
+      iconOffset = getIconOffset(iconShape.coordinates);
     }
 
     iconLayout = ymaps?.templateLayoutFactory.createClass(
