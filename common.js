@@ -20,7 +20,15 @@ function moveCenterToPoint(objectId, isAnimated) {
         mapInstance.margin.setDefaultMargin(0);
       });
 
-      sendAction(pointInfo, actions.moveCenterToPoint);
+      // sendAction(pointInfo, actions.moveCenterToPoint);
+
+      if (iOSDevice) {
+        // iOS
+        postMessage(JSON.stringify(pointInfo), actions.moveCenterToPoint);
+      } else {
+        // Android
+        Letu.moveCenterToPoint(JSON.stringify(pointInfo))
+      }
   }
 }
 
@@ -43,22 +51,30 @@ function move(lat, lon, isAnimated) {
   const iconData = getObjectIcon(selectedId, true);
   objectManager.objects.setObjectOptions(selectedId, iconData);
 
-  sendAction({
-    lat,
-    lon,
-    isAnimated
-  }, actions.move)
-}
+  // sendAction({
+  //   lat,
+  //   lon,
+  //   isAnimated
+  // }, actions.move)
 
-function sendAction(actionValue, actionName) {
   if (iOSDevice) {
     // iOS
-    postMessage(actionValue, actionName);
+    postMessage(JSON.stringify({ lat, lon, isAnimated }), actions.move);
   } else {
     // Android
-    Letu[actionName]?.call(this, actionValue);
+    Letu.move(JSON.stringify({ lat, lon, isAnimated }))
   }
 }
+
+// function sendAction(actionValue, actionName) {
+//   if (iOSDevice) {
+//     // iOS
+//     postMessage(JSON.stringify(actionValue), actionName);
+//   } else {
+//     // Android
+//     Letu[actionName](actionValue);
+//   }
+// }
 
 function setZoom(zoom) {
   mapInstance.setZoom(zoom, {
@@ -66,7 +82,15 @@ function setZoom(zoom) {
     duration: animationDuration,
   });
 
-  sendAction(zoom, actions.setZoom);
+  // sendAction(zoom, actions.setZoom);
+
+  if (iOSDevice) {
+    // iOS
+    postMessage(JSON.stringify(zoom), actions.setZoom);
+  } else {
+    // Android
+    Letu.setZoom(JSON.stringify(zoom))
+  }
 }
 
 function setZoomDefault() {
@@ -75,7 +99,15 @@ function setZoomDefault() {
     duration: animationDuration,
   });
 
-  sendAction(zoom, actions.setZoomDefault);
+  // sendAction(zoom, actions.setZoomDefault);
+
+  if (iOSDevice) {
+    // iOS
+    postMessage(JSON.stringify(zoom), actions.setZoomDefault);
+  } else {
+    // Android
+    Letu.setZoomDefault(JSON.stringify(zoom))
+  }
 }
 
 function zoomOut() {
@@ -86,7 +118,15 @@ function zoomOut() {
       duration: animationDuration,
     });
 
-    sendAction(nextZoom, actions.zoomOut);
+    // sendAction(nextZoom, actions.zoomOut);
+
+    if (iOSDevice) {
+      // iOS
+      postMessage(JSON.stringify(nextZoom), actions.zoomOut);
+    } else {
+      // Android
+      Letu.zoomOut(JSON.stringify(nextZoom))
+    }
   }
 }
 
@@ -98,7 +138,15 @@ function zoomIn() {
       duration: animationDuration,
     });
 
-    sendAction(nextZoom, actions.zoomIn);
+    // sendAction(nextZoom, actions.zoomIn);
+
+    if (iOSDevice) {
+      // iOS
+      postMessage(JSON.stringify(nextZoom), actions.zoomIn);
+    } else {
+      // Android
+      Letu.zoomIn(JSON.stringify(nextZoom))
+    }
   }
 }
 
@@ -119,14 +167,30 @@ function addUserPositionPin(lat, lon) {
   userLocationCollection.add(locationPlacemark); // Add user location point in collection
   mapInstance.geoObjects.add(userLocationCollection); // Add user location collection with point on map
 
-  sendAction(coords, actions.addUserPositionPin);
+  // sendAction(coords, actions.addUserPositionPin);
+
+  if (iOSDevice) {
+    // iOS
+    postMessage(JSON.stringify(coords), actions.addUserPositionPin);
+  } else {
+    // Android
+    Letu.addUserPositionPin(JSON.stringify(coords))
+  }
 }
 
 function removeUserPositionPin() {
   clearSelectedMarker();
   userLocationCollection.removeAll(); // Clearing old data from the user location collection
 
-  sendAction('', actions.removeUserPositionPin);
+  // sendAction('', actions.removeUserPositionPin);
+
+  if (iOSDevice) {
+    // iOS
+    postMessage('', actions.removeUserPositionPin);
+  } else {
+    // Android
+    Letu.removeUserPositionPin('')
+  }
 }
 
 function selectPoint(objectId, isAnimated) {
@@ -136,13 +200,29 @@ function selectPoint(objectId, isAnimated) {
 
   const pointInfo = getObjectById(id)?.pointInfo
 
-  sendAction(pointInfo, actions.selectPoint)
+  // sendAction(pointInfo, actions.selectPoint)
+
+  if (iOSDevice) {
+    // iOS
+    postMessage(JSON.stringify(pointInfo), actions.selectPoint);
+  } else {
+    // Android
+    Letu.selectPoint(JSON.stringify(pointInfo))
+  }
 }
 
 function unselectPoints() {
   clearSelectedMarker();
   selectedId = null;
-  sendAction('', actions.unselectPoints)
+  // sendAction('', actions.unselectPoints)
+
+  if (iOSDevice) {
+    // iOS
+    postMessage('', actions.unselectPoints);
+  } else {
+    // Android
+    Letu.unselectPoints('')
+  }
 }
 
 /**
@@ -296,7 +376,15 @@ async function initMap(ymaps) {
 
 function bindEvents() {
   mapInstance.events.add('click', async (e) => {
-    sendAction('', actions.didTapOnMap)
+    // sendAction('', actions.didTapOnMap)
+
+    if (iOSDevice) {
+      // iOS
+      postMessage('', actions.didTapOnMap);
+    } else {
+      // Android
+      Letu.didTapOnMap('')
+    }
   });
 
   mapInstance.events.add('boundschange', async (e) => {
@@ -321,9 +409,19 @@ function bindEvents() {
     selectedId = clickedPointId;
     const pointObject = getObjectById(clickedPointId);
 
+    // console.log(pointObject);
+
     moveCenterToPoint(clickedPointId, hasAnimationOnMove);
 
-    sendAction(pointObject.pointInfo, actions.didTapOnPoint);
+    // sendAction(pointObject.pointInfo, actions.didTapOnPoint);
+
+    if (iOSDevice) {
+      // iOS
+      postMessage(JSON.stringify(pointObject.pointInfo), actions.didTapOnPoint);
+    } else {
+      // Android
+      Letu.didTapOnPoint(JSON.stringify(pointObject.pointInfo))
+    }
   });
 
   // Processing a click on clusters
@@ -337,11 +435,19 @@ function bindEvents() {
         return !geoObject.properties.balloonContent;
       });
 
-      const objects = array.map((geoObject) => {
+      const objectsInfo = array.map((geoObject) => {
         return getObjectById(geoObject.id).pointInfo;
       });
 
-      sendAction(objects, actions.didTapOnCluster);
+      // sendAction(objectsInfo, actions.didTapOnCluster);
+
+      if (iOSDevice) {
+        // iOS
+        postMessage(JSON.stringify(objectsInfo), actions.didTapOnCluster);
+      } else {
+        // Android
+        Letu.didTapOnCluster(JSON.stringify(objectsInfo))
+      }
     }
   });
 }
@@ -560,4 +666,3 @@ function getPointOfIssueImagePath(type, isForPoint = false) {
 /**
  * Private interface end
  */
-
