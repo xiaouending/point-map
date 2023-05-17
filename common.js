@@ -171,15 +171,14 @@ function addUserPositionPin(lat, lon) {
 
   if (iOSDevice) {
     // iOS
-    postMessage(JSON.stringify(coords), actions.addUserPositionPin);
+    postMessage(`${lat},${lon}`, actions.addUserPositionPin);
   } else {
     // Android
-    Letu.addUserPositionPin(JSON.stringify(coords))
+    Letu.addUserPositionPin(`${lat},${lon}`)
   }
 }
 
 function removeUserPositionPin() {
-  clearSelectedMarker();
   userLocationCollection.removeAll(); // Clearing old data from the user location collection
 
   // sendAction('', actions.removeUserPositionPin);
@@ -189,7 +188,7 @@ function removeUserPositionPin() {
     postMessage('', actions.removeUserPositionPin);
   } else {
     // Android
-    Letu.removeUserPositionPin('')
+    Letu.removeUserPositionPin()
   }
 }
 
@@ -221,7 +220,7 @@ function unselectPoints() {
     postMessage('', actions.unselectPoints);
   } else {
     // Android
-    Letu.unselectPoints('')
+    Letu.unselectPoints()
   }
 }
 
@@ -276,6 +275,10 @@ function initialization() {
 
 function getObjectIcon(objectId, isClicked) {
   const geoObject = objectManager.objects.getById(objectId);
+
+  if (!geoObject) {
+    return;
+  }
 
   const pointOptions = geoObject.options;
   const type = geoObject.pointInfo.type === 'store' ? 'store' : 'pointOfIssue';
@@ -383,7 +386,7 @@ function bindEvents() {
       postMessage('', actions.didTapOnMap);
     } else {
       // Android
-      Letu.didTapOnMap('')
+      Letu.didTapOnMap()
     }
   });
 
@@ -506,7 +509,7 @@ function initObjectManager() {
 
   bindEvents();
 
-  addUserPositionPin(globalSettings.map.userLat, globalSettings.map.userLon, false);
+  addUserPositionPin(globalSettings.map.userLat, globalSettings.map.userLon);
 }
 
 function prepareQueryParams(params) {
