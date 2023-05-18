@@ -28,8 +28,6 @@ const globalSettings = {
   scriptSrc: `https://api-maps.yandex.ru/2.1/?apiKey="949cd34d-e616-40f7-aa2b-b8024b7bb4b0"&lang=ru_RU&onload=yandexMapsAPILoad`,
   map: {
     apiUrl: '/s/api/geo/v2/map/locations',
-    userLat: userLat || 55.75396,
-    userLon: userLon || 37.620393,
     mapStartLat: mapStartLat || 55.75396,
     mapStartLon: mapStartLon || 37.620393,
     zoom: defaultZoom || 15,
@@ -71,16 +69,6 @@ const actions = {
   didTapOnPoint: 'didTapOnPoint',
   didTapOnMap: 'didTapOnMap',
   didTapOnCluster: 'didTapOnCluster',
-  zoomIn: 'zoomIn',
-  zoomOut: 'zoomOut',
-  setZoomDefault: 'setZoomDefault',
-  setZoom: 'setZoom',
-  addUserPositionPin: 'addUserPositionPin',
-  removeUserPositionPin: 'removeUserPositionPin',
-  moveCenterToPoint: 'moveCenterToPoint',
-  applyFilters: 'applyFilters',
-  selectPoint: 'selectPoint',
-  unselectPoints: 'unselectPoints',
 }
 
 const placemarks = {

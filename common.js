@@ -1,37 +1,6 @@
 /**
  * Public interface
  */
-function moveCenterToPoint(objectId, isAnimated) {
-  const pointObject = getObjectById(objectId);
-
-  if (pointObject && Object.keys(pointObject).length) {
-    const useMapMargin = selectedId != null;
-    const pointInfo = pointObject.pointInfo;
-    // Set margin-bottom for mobile overlay
-    mapInstance.margin.setDefaultMargin([0, 0, marginBottomMobileOverlay, 0]);
-    // Move the map to point
-    mapInstance
-      .panTo(pointObject.geometry?.coordinates, {
-        useMapMargin: useMapMargin,
-        duration: isAnimated ? animationDuration : 0,
-      })
-      .then(() => {
-        // Clear margin-bottom after moved
-        mapInstance.margin.setDefaultMargin(0);
-      });
-
-      // sendAction(pointInfo, actions.moveCenterToPoint);
-
-      if (iOSDevice) {
-        // iOS
-        postMessage(JSON.stringify(pointInfo), actions.moveCenterToPoint);
-      } else {
-        // Android
-        Letu.moveCenterToPoint(JSON.stringify(pointInfo))
-      }
-  }
-}
-
 function move(lat, lon, isAnimated) {
   const useMapMargin = selectedId != null;
 
@@ -47,110 +16,43 @@ function move(lat, lon, isAnimated) {
       // Clear margin-bottom after moved
       mapInstance.margin.setDefaultMargin(0);
     });
-
-  const iconData = getObjectIcon(selectedId, true);
-  objectManager.objects.setObjectOptions(selectedId, iconData);
-
-  // sendAction({
-  //   lat,
-  //   lon,
-  //   isAnimated
-  // }, actions.move)
-
-  if (iOSDevice) {
-    // iOS
-    postMessage(JSON.stringify({ lat, lon, isAnimated }), actions.move);
-  } else {
-    // Android
-    Letu.move(JSON.stringify({ lat, lon, isAnimated }))
-  }
 }
 
-// function sendAction(actionValue, actionName) {
-//   if (iOSDevice) {
-//     // iOS
-//     postMessage(JSON.stringify(actionValue), actionName);
-//   } else {
-//     // Android
-//     Letu[actionName](actionValue);
-//   }
-// }
-
-function setZoom(zoom) {
+function setZoom(zoom, isAnimated) {
   mapInstance.setZoom(zoom, {
     smooth: true,
-    duration: animationDuration,
+    duration: isAnimated ? animationDuration : 0,
   });
-
-  // sendAction(zoom, actions.setZoom);
-
-  if (iOSDevice) {
-    // iOS
-    postMessage(JSON.stringify(zoom), actions.setZoom);
-  } else {
-    // Android
-    Letu.setZoom(JSON.stringify(zoom))
-  }
 }
 
-function setZoomDefault() {
+function setZoomDefault(isAnimated) {
   mapInstance.setZoom(zoom, {
     smooth: true,
-    duration: animationDuration,
+    duration: isAnimated ? animationDuration : 0,
   });
-
-  // sendAction(zoom, actions.setZoomDefault);
-
-  if (iOSDevice) {
-    // iOS
-    postMessage(JSON.stringify(zoom), actions.setZoomDefault);
-  } else {
-    // Android
-    Letu.setZoomDefault(JSON.stringify(zoom))
-  }
 }
 
-function zoomOut() {
+function zoomOut(isAnimated) {
   if (!isMinMapZoom()) {
     let nextZoom = mapInstance.getZoom() - 1;
     mapInstance.setZoom(nextZoom, {
       smooth: true,
-      duration: animationDuration,
+      duration: isAnimated ? animationDuration : 0,
     });
-
-    // sendAction(nextZoom, actions.zoomOut);
-
-    if (iOSDevice) {
-      // iOS
-      postMessage(JSON.stringify(nextZoom), actions.zoomOut);
-    } else {
-      // Android
-      Letu.zoomOut(JSON.stringify(nextZoom))
-    }
   }
 }
 
-function zoomIn() {
+function zoomIn(isAnimated) {
   if (!isMaxMapZoom()) {
     let nextZoom = mapInstance.getZoom() + 1;
     mapInstance.setZoom(nextZoom, {
       smooth: true,
-      duration: animationDuration,
+      duration: isAnimated ? animationDuration : 0,
     });
-
-    // sendAction(nextZoom, actions.zoomIn);
-
-    if (iOSDevice) {
-      // iOS
-      postMessage(JSON.stringify(nextZoom), actions.zoomIn);
-    } else {
-      // Android
-      Letu.zoomIn(JSON.stringify(nextZoom))
-    }
   }
 }
 
-function addUserPositionPin(lat, lon) {
+function setUserPositionPinAt(lat, lon) {
   userLocationCollection.removeAll(); // Clearing old data from the user location collection
 
   const coords = [lat, lon];
@@ -166,67 +68,20 @@ function addUserPositionPin(lat, lon) {
 
   userLocationCollection.add(locationPlacemark); // Add user location point in collection
   mapInstance.geoObjects.add(userLocationCollection); // Add user location collection with point on map
-
-  // sendAction(coords, actions.addUserPositionPin);
-
-  if (iOSDevice) {
-    // iOS
-    postMessage(`${lat},${lon}`, actions.addUserPositionPin);
-  } else {
-    // Android
-    Letu.addUserPositionPin(`${lat},${lon}`)
-  }
 }
 
 function removeUserPositionPin() {
   userLocationCollection.removeAll(); // Clearing old data from the user location collection
-
-  // sendAction('', actions.removeUserPositionPin);
-
-  if (iOSDevice) {
-    // iOS
-    postMessage('', actions.removeUserPositionPin);
-  } else {
-    // Android
-    Letu.removeUserPositionPin()
-  }
-}
-
-function selectPoint(objectId, isAnimated) {
-  selectedId = null;
-  moveCenterToPoint(objectId, isAnimated);
-  selectedId = objectId;
-
-  const pointInfo = getObjectById(id)?.pointInfo
-
-  // sendAction(pointInfo, actions.selectPoint)
-
-  if (iOSDevice) {
-    // iOS
-    postMessage(JSON.stringify(pointInfo), actions.selectPoint);
-  } else {
-    // Android
-    Letu.selectPoint(JSON.stringify(pointInfo))
-  }
 }
 
 function unselectPoints() {
   clearSelectedMarker();
   selectedId = null;
-  // sendAction('', actions.unselectPoints)
-
-  if (iOSDevice) {
-    // iOS
-    postMessage('', actions.unselectPoints);
-  } else {
-    // Android
-    Letu.unselectPoints()
-  }
 }
 
 /**
  * Apply filters
- * @param {Array} selectedFiltersList list of strings to apply the filters. Example: ['ALL', 'NOTHING', 'SOME']
+ * @param {Array} selectedFiltersList list of strings to apply the filters. Example: ['fivePost']
  */
 function applyFilters(
   selectedFiltersList = [],
@@ -275,10 +130,7 @@ function initialization() {
 
 function getObjectIcon(objectId, isClicked) {
   const geoObject = objectManager.objects.getById(objectId);
-
-  if (!geoObject) {
-    return;
-  }
+  if (!geoObject) return
 
   const pointOptions = geoObject.options;
   const type = geoObject.pointInfo.type === 'store' ? 'store' : 'pointOfIssue';
@@ -412,11 +264,9 @@ function bindEvents() {
     selectedId = clickedPointId;
     const pointObject = getObjectById(clickedPointId);
 
-    // console.log(pointObject);
+    const [pointLat, pointLon] = pointObject.geometry.coordinates;
 
-    moveCenterToPoint(clickedPointId, hasAnimationOnMove);
-
-    // sendAction(pointObject.pointInfo, actions.didTapOnPoint);
+    move(pointLat, pointLon, true);
 
     if (iOSDevice) {
       // iOS
@@ -441,8 +291,6 @@ function bindEvents() {
       const objectsInfo = array.map((geoObject) => {
         return getObjectById(geoObject.id).pointInfo;
       });
-
-      // sendAction(objectsInfo, actions.didTapOnCluster);
 
       if (iOSDevice) {
         // iOS
@@ -509,7 +357,9 @@ function initObjectManager() {
 
   bindEvents();
 
-  addUserPositionPin(globalSettings.map.userLat, globalSettings.map.userLon);
+  if (userLat && userLon) {
+    setUserPositionPinAt(userLat, userLon);
+  }
 }
 
 function prepareQueryParams(params) {
