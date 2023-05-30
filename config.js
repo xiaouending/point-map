@@ -52,8 +52,8 @@ let objectManager = null;
 let ymaps = null;
 let userLocationCollection = null;
 
-const minZoom = 10;
-const maxZoom = 15;
+const minZoom = 12;
+const maxZoom = 19;
 const isMaxMapZoom = () => mapInstance.getZoom() == maxZoom;
 const isMinMapZoom = () => mapInstance.getZoom() == minZoom;
 
