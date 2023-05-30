@@ -2,20 +2,8 @@
  * Public interface
  */
 function move(lat, lon, isAnimated) {
-  const useMapMargin = selectedId != null;
-
-  // Set margin-bottom for mobile overlay
-  mapInstance.margin.setDefaultMargin([0, 0, marginBottomMobileOverlay, 0]);
   // Move the map to point
-  mapInstance
-    .panTo([lat, lon], {
-      useMapMargin: useMapMargin, // Maybe using function param?
-      duration: isAnimated ? 500 : 0,
-    })
-    .then(() => {
-      // Clear margin-bottom after moved
-      mapInstance.margin.setDefaultMargin(0);
-    });
+  mapInstance.panTo([lat, lon], { duration: isAnimated ? 500 : 0 })
 }
 
 function setZoom(zoom, isAnimated) {
@@ -231,8 +219,6 @@ async function initMap(ymaps) {
 
 function bindEvents() {
   mapInstance.events.add('click', async (e) => {
-    // sendAction('', actions.didTapOnMap)
-
     if (iOSDevice) {
       // iOS
       postMessage('', actions.didTapOnMap);
@@ -242,20 +228,10 @@ function bindEvents() {
     }
   });
 
-  mapInstance.events.add('boundschange', async (e) => {
-    objectManager.objects.each(function(geoObject) {
-      const isClicked = selectedId == geoObject.id;
-      const iconData = getObjectIcon(geoObject.id, isClicked);
-      objectManager.objects.setObjectOptions(geoObject.id, iconData);
-
-      const objectState = objectManager.getObjectState(geoObject.id);
-      if (objectState?.isShown) {
-        //todo: change city if more 50% points from other city
-      }
-    });
-  });
+  mapInstance.events.add('boundschange', onMapBoundschange);
 
   objectManager.objects.events.add('click', async (e) => {
+    clearSelectedMarker();
     const clickedPointId = e.get('objectId');
 
     const iconData = getObjectIcon(clickedPointId, true);
@@ -516,6 +492,77 @@ function getPointOfIssueImagePath(type, isForPoint = false) {
 
   return `${imageName}.png`;
 }
+
+function debounce(func, wait, immediate) {
+  let timeout;
+
+  return function executedFunction() {
+    const context = this;
+    const args = arguments;
+
+    const later = function() {
+      timeout = null;
+      if (!immediate) func.apply(context, args);
+    };
+
+    const callNow = immediate && !timeout;
+
+    clearTimeout(timeout);
+
+    timeout = setTimeout(later, wait);
+
+    if (callNow) func.apply(context, args);
+  };
+};
+
+function getMostFrequentArrayValue(array) {
+  return array
+    .sort(
+      (a, b) =>
+        array.filter((value) => value === a).length -
+        array.filter((value) => value === b).length,
+    )
+    .pop();
+}
+
+const onMapBoundschange = debounce(function() {
+  const shownPoints = [];
+
+  objectManager.objects.each((geoObject) => {
+    const objectState = objectManager.getObjectState(geoObject.id);
+    if (objectState && objectState.found && objectState.isShown) {
+      shownPoints.push(geoObject);
+    }
+  });
+
+  if (!shownPoints.length) {
+    return;
+  }
+
+  const mostFrequentCityId = getMostFrequentArrayValue(
+    shownPoints.map((point) => point.pointInfo?.address?.city?.id),
+  );
+
+  if (mostFrequentCityId && mostFrequentCityId !== activeCityId) {
+    activeCityId = mostFrequentCityId;
+
+    const newCity = shownPoints.find(
+      (point) => point.pointInfo.address.city.id === mostFrequentCityId,
+    )?.pointInfo.address.city;
+
+    if (!newCity) {
+      return;
+    }
+
+    if (iOSDevice) {
+      // iOS
+      postMessage(JSON.stringify(newCity), actions.didChangeCityOnMap);
+    } else {
+      // Android
+      Letu.didTapOnMap(JSON.stringify(newCity))
+    }
+  }
+}, MAP_BOUNDSCHANGE_THROTTLE_MS);
 /**
  * Private interface end
  */

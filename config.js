@@ -46,7 +46,6 @@ const pointsApiUrl = baseHost + globalSettings.map.apiUrl;
 
 const zoom = globalSettings.map.zoom;
 const animationDuration = globalSettings.map.animationDurationMs;
-const marginBottomMobileOverlay = iOSDevice ? 200 : 150;
 
 let mapInstance = null;
 let objectManager = null;
@@ -61,14 +60,18 @@ const isMinMapZoom = () => mapInstance.getZoom() == minZoom;
 mapStartLat = globalSettings.map.mapStartLat;
 mapStartLon = globalSettings.map.mapStartLon;
 
+const MAP_BOUNDSCHANGE_THROTTLE_MS = 1500;
+let activeCityId = cityId;
+
 // Map pins
-const userPositionPin = 'pin-user-position.svg'
+const userPositionPin = 'pin-user-position.svg';
 
 // Actions to communicate with the mobile apps
 const actions = {
   didTapOnPoint: 'didTapOnPoint',
   didTapOnMap: 'didTapOnMap',
   didTapOnCluster: 'didTapOnCluster',
+  didChangeCityOnMap: 'didChangeCityOnMap',
 }
 
 const placemarks = {
