@@ -559,7 +559,7 @@ const onMapBoundschange = debounce(function() {
       postMessage(JSON.stringify(newCity), actions.didChangeCityOnMap);
     } else {
       // Android
-      Letu.didTapOnMap(JSON.stringify(newCity))
+      Letu.didChangeCityOnMap(JSON.stringify(newCity))
     }
   }
 }, MAP_BOUNDSCHANGE_THROTTLE_MS);
