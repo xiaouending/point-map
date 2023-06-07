@@ -67,6 +67,10 @@ function unselectPoints() {
   selectedId = null;
 }
 
+function fitToViewport() {
+  mapInstance.container.fitToViewport()
+}
+
 /**
  * Apply filters
  * @param {Array} selectedFiltersList list of strings to apply the filters. Example: ['fivePost']
@@ -211,6 +215,7 @@ async function initMap(ymaps) {
       minZoom: minZoom,
       maxZoom: maxZoom,
       suppressMapOpenBlock: true,
+      autoFitToViewport: 'always',
     },
   );
 
@@ -323,12 +328,14 @@ function initObjectManager() {
       getPlacemarkTemplate('cluster'),
     ),
     clusterIconShape: placemarks.iconShapes.cluster,
+    gridSize: 256,
   }
 
   const path = `${pointsApiUrl}?b=%b&z=%z&${prepareQueryParams(queryParams)}`;
 
   objectManager = new ymaps.LoadingObjectManager(path, options);
   mapInstance.geoObjects.add(objectManager);
+  mapInstance.margin.setDefaultMargin(globalSettings.mapDefaultMargin);
   userLocationCollection = new ymaps.GeoObjectCollection();
 
   bindEvents();
