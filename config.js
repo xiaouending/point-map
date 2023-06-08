@@ -32,7 +32,6 @@ const globalSettings = {
     mapStartLon: mapStartLon || 37.620393,
     zoom: defaultZoom || 15,
     animationDurationMs: animationDurationMs || 300,
-    defaultMargin: 70,
   },
 };
 

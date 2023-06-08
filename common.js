@@ -362,7 +362,6 @@ function initObjectManager() {
 
   objectManager = new ymaps.LoadingObjectManager(path, options);
   mapInstance.geoObjects.add(objectManager);
-  mapInstance.margin.setDefaultMargin(globalSettings.map.defaultMargin);
   userLocationCollection = new ymaps.GeoObjectCollection();
 
   bindEvents();
