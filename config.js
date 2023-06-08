@@ -25,14 +25,14 @@ if (type !== 'store' && type !== 'pointOfIssue' && type !== 'all') {
 
 // Global settings
 const globalSettings = {
-  scriptSrc: `https://api-maps.yandex.ru/2.1/?apiKey="949cd34d-e616-40f7-aa2b-b8024b7bb4b0"&lang=ru_RU&onload=yandexMapsAPILoad`,
+  scriptSrc: `https://api-maps.yandex.ru/2.1.79/?apiKey="949cd34d-e616-40f7-aa2b-b8024b7bb4b0"&lang=ru_RU&onload=yandexMapsAPILoad`,
   map: {
     apiUrl: '/s/api/geo/v2/map/locations',
     mapStartLat: mapStartLat || 55.75396,
     mapStartLon: mapStartLon || 37.620393,
     zoom: defaultZoom || 15,
     animationDurationMs: animationDurationMs || 300,
-    mapDefaultMargin: 50,
+    defaultMargin: 70,
   },
 };
 

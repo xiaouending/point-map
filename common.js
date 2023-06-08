@@ -72,6 +72,27 @@ function fitToViewport() {
 }
 
 /**
+ * Converts global pixel coordinates of a point to local coordinates and local to global
+ * @param {string} method globalToPage or pageToGlobal
+ * @param {number} lat latitude
+ * @param {number} lon longitude
+ * @returns {number[]} coordinates. Example [15, 15] 
+ */
+function convertPixels(method = 'globalToPage', lat, lon) {
+  const projection = mapInstance.options.get('projection');
+  const converter = mapInstance.converter;
+  const currentZoom = mapInstance.getZoom();
+
+  if (method === 'globalToPage') {
+    return converter.globalToPage(projection.toGlobalPixels([lat, lon], currentZoom));
+  } else if (method === 'pageToGlobal') {
+    return converter.pageToGlobal([lat, lon], currentZoom);
+  }
+
+  return [lat, lon];
+}
+
+/**
  * Apply filters
  * @param {Array} selectedFiltersList list of strings to apply the filters. Example: ['fivePost']
  */
@@ -328,14 +349,14 @@ function initObjectManager() {
       getPlacemarkTemplate('cluster'),
     ),
     clusterIconShape: placemarks.iconShapes.cluster,
-    gridSize: 256,
+    gridSize: 128,
   }
 
   const path = `${pointsApiUrl}?b=%b&z=%z&${prepareQueryParams(queryParams)}`;
 
   objectManager = new ymaps.LoadingObjectManager(path, options);
   mapInstance.geoObjects.add(objectManager);
-  mapInstance.margin.setDefaultMargin(globalSettings.mapDefaultMargin);
+  mapInstance.margin.setDefaultMargin(globalSettings.map.defaultMargin);
   userLocationCollection = new ymaps.GeoObjectCollection();
 
   bindEvents();
