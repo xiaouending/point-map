@@ -73,6 +73,7 @@ const actions = {
   didTapOnMap: 'didTapOnMap',
   didTapOnCluster: 'didTapOnCluster',
   didChangeCityOnMap: 'didChangeCityOnMap',
+  didTapOnUnexpendedCluster: 'didTapOnUnexpendedCluster', // Ивент для отслеживания рядом находящихся точек
 }
 
 const placemarks = {

@@ -72,27 +72,6 @@ function fitToViewport() {
 }
 
 /**
- * Converts global pixel coordinates of a point to local coordinates and local to global
- * @param {string} method globalToPage or pageToGlobal
- * @param {number} lat latitude
- * @param {number} lon longitude
- * @returns {number[]} coordinates. Example [15, 15] 
- */
-function convertPixels(method = 'globalToPage', lat, lon) {
-  const projection = mapInstance.options.get('projection');
-  const converter = mapInstance.converter;
-  const currentZoom = mapInstance.getZoom();
-
-  if (method === 'globalToPage') {
-    return converter.globalToPage(projection.toGlobalPixels([lat, lon], currentZoom));
-  } else if (method === 'pageToGlobal') {
-    return converter.pageToGlobal([lat, lon], currentZoom);
-  }
-
-  return [lat, lon];
-}
-
-/**
  * Apply filters
  * @param {Array} selectedFiltersList list of strings to apply the filters. Example: ['fivePost']
  */
@@ -294,12 +273,38 @@ function bindEvents() {
         return getObjectById(geoObject.id).pointInfo;
       });
 
+      const currentZoom = mapInstance.getZoom();
+
+      const objectsCoords = objectsInfo.map((objectInfo) => {
+        const { latitude, longitude } = objectInfo.address;
+        return [latitude, longitude];
+      })
+
+      ymaps.util.requireCenterAndZoom(
+        mapInstance.getType(),
+        ymaps.util.pixelBounds.fromPoints(objectsCoords),
+        mapInstance.container.getSize(),
+        {
+          margin: 70,
+        }
+      ).then(function (result) {
+          mapInstance.setCenter(result.center, result.zoom);
+      });
+
       if (iOSDevice) {
         // iOS
         postMessage(JSON.stringify(objectsInfo), actions.didTapOnCluster);
+
+        if (currentZoom === maxZoom) {
+          postMessage(JSON.stringify(objectsInfo), actions.didTapOnUnexpendedCluster);
+        }
       } else {
         // Android
-        Letu.didTapOnCluster(JSON.stringify(objectsInfo))
+        Letu.didTapOnCluster(JSON.stringify(objectsInfo));
+
+        if (currentZoom === maxZoom) {
+          Letu.didTapOnUnexpendedCluster(JSON.stringify(objectsInfo));
+        }
       }
     }
   });
@@ -350,6 +355,7 @@ function initObjectManager() {
     ),
     clusterIconShape: placemarks.iconShapes.cluster,
     gridSize: 128,
+    clusterDisableClickZoom: true,
   }
 
   const path = `${pointsApiUrl}?b=%b&z=%z&${prepareQueryParams(queryParams)}`;
